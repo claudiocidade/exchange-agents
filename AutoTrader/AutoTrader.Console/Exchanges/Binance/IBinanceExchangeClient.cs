@@ -1,4 +1,4 @@
-﻿// <copyright file="IExchangeClient.cs" company="ElmoLabs">
+﻿// <copyright file="IBinanceExchangeClient.cs" company="ElmoLabs">
 //  Copyright (c) All rights reserved.
 // </copyright>
 namespace AutoTrader.Console.Exchanges.Binance

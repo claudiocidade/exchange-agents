@@ -19,8 +19,6 @@ namespace AutoTrader.Console.Exchanges.Binance
     /// </summary>
     public class BinanceExchangeClient : ExchangeClient, IBinanceExchangeClient
     {
-        private double TimeStamp => (DateTime.Now - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
-
         /// <summary>
         /// Gets current price information of an asset symbol.
         /// </summary>
@@ -51,7 +49,7 @@ namespace AutoTrader.Console.Exchanges.Binance
         /// <param name="amount">The amount of assets to be traded.</param>
         /// <param name="type">Type of the order that will be created.</param>
         /// <returns>The order identification number.</returns>
-        public override async Task<long> CreateOrder(string symbol, double bidPrice, double amount, Order.Type type)
+        public override async Task<long> CreateOrder(string symbol, double bidPrice, double amount, OrderType type)
         {
             RestRequest request = new RestRequest("order/test", Method.POST);
 
@@ -78,7 +76,7 @@ namespace AutoTrader.Console.Exchanges.Binance
         /// <param name="amount">The amount of assets to be traded.</param>
         /// <param name="type">Type of the order that will be created.</param>
         /// <returns>The order identification number.</returns>
-        private IList<Parameter> CreateOrderParameterList(string symbol, double bidPrice, double amount, Order.Type type)
+        private IList<Parameter> CreateOrderParameterList(string symbol, double bidPrice, double amount, OrderType type)
         {
             IList<Parameter> parameters = new List<Parameter>();
 
@@ -97,28 +95,6 @@ namespace AutoTrader.Console.Exchanges.Binance
             parameters.Add(new Parameter() { Name = "signature", Value = this.GetSignature(signatureMessage), Type = ParameterType.GetOrPost });
 
             return parameters;
-        }
-
-        /// <summary>
-        /// Creates a new trade order json object to be included in the request body.
-        /// </summary>
-        /// <param name="symbol">Name of the cryptocurrency asset symbol.</param>
-        /// <param name="bidPrice">The price to bid for this order.</param>
-        /// <param name="amount">The amount of assets to be traded.</param>
-        /// <param name="type">Type of the order that will be created.</param>
-        /// <returns>The order identification number.</returns>
-        private string CreateJsonOrderBody(string symbol, double bidPrice, double amount, Order.Type type)
-        {
-            dynamic order = new ExpandoObject();
-
-            order.symbol = symbol;
-            order.quantity = $"{amount:F8}";
-            order.price = $"{bidPrice:F8}";
-            order.type = "MARKET";
-            order.timestamp = Convert.ToInt64(this.TimeStamp);
-            order.side = type.ToString();
-
-            return JsonConvert.SerializeObject(order);
         }
     }
 }

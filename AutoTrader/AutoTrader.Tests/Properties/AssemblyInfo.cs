@@ -1,5 +1,7 @@
+// <copyright file="AssemblyInfo.cs" company="ElmoLabs">
+//  Copyright (c) All rights reserved.
+// </copyright>
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 [assembly: AssemblyTitle("AutoTrader.Tests")]

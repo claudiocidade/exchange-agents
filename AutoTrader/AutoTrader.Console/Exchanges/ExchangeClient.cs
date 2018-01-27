@@ -40,10 +40,10 @@ namespace AutoTrader.Console.Exchanges
         /// </summary>
         /// <param name="symbol">Name of the cryptocurrency asset symbol.</param>
         /// <param name="bidPrice">The price to bid for this order.</param>
-        /// <param name="type">Type of the order that will be created.</param>
         /// <param name="amount">The amount of assets to be traded.</param>
+        /// <param name="type">Type of the order that will be created.</param>
         /// <returns>The order identification number.</returns>
-        public abstract Task<long> CreateOrder(string symbol, double bidPrice, double amount, Order.Type type);
+        public abstract Task<long> CreateOrder(string symbol, double bidPrice, double amount, OrderType type);
 
         /// <summary>
         /// Gets an HMACSHA256 signature to authorize requests to the exchange API.
@@ -56,7 +56,7 @@ namespace AutoTrader.Console.Exchanges
             
             byte[] signatureBytes = hash.ComputeHash(System.Text.Encoding.Default.GetBytes(message));
 
-            return BitConverter.ToString(signatureBytes).Replace("-", "");
+            return BitConverter.ToString(signatureBytes).Replace("-", string.Empty);
         }
     }
 }

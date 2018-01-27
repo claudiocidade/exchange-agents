@@ -26,6 +26,6 @@ namespace AutoTrader.Console.Exchanges
         /// <param name="amount">The amount of assets to be traded.</param>
         /// <param name="type">Type of the order that will be created.</param>
         /// <returns>The order identification number.</returns>
-        Task<long> CreateOrder(string symbol, double bidPrice, double amount, Order.Type type);
+        Task<long> CreateOrder(string symbol, double bidPrice, double amount, OrderType type);
     }
 }

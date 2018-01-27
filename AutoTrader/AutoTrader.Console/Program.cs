@@ -29,7 +29,7 @@ namespace AutoTrader.Console
         private static readonly IContainer Container;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="Program"/> class.
+        /// Initializes static members of the <see cref="Program"/> class.
         /// </summary>
         static Program()
         {
@@ -66,19 +66,27 @@ namespace AutoTrader.Console
         {
             string symbol = $"{(args.Length > 1 ? args[1].ToUpper() : "ADA")}BTC";
             
-            double amount = Double.Parse(args.Length > 2 ? args[2].ToUpper() : "0.01000000", NumberStyles.AllowDecimalPoint);
+            double amount = double.Parse(args.Length > 2 ? args[2].ToUpper() : "0.01000000", NumberStyles.AllowDecimalPoint);
 
             IExchangeClient client = Container.GetInstance<IBinanceExchangeClient>();
 
             Plan plan = CreateTradePlan(client, symbol, amount);
 
-            long orderId = client.CreateOrder(symbol, plan.Bid, amount / plan.Bid, Order.Type.Buy).GetAwaiter().GetResult();
+            long orderId = client.CreateOrder(symbol, plan.Bid, amount / plan.Bid, OrderType.Buy).GetAwaiter().GetResult();
 
             Logger.LogInformation($"Buy order created {orderId}");
 
             Console.ReadKey();
         }
 
+        /// <summary>
+        /// Creates a plan for this trade by evaluating and calculating the entrance and exit prices
+        /// to benefit from sudden spikes in price.
+        /// </summary>
+        /// <param name="client">An instance of the exchange manipulation client.</param>
+        /// <param name="symbolName">Name of the asset symbol to trade.</param>
+        /// <param name="amount">Amount to invest in BTC.</param>
+        /// <returns>An instance of the <see cref="Plan"/> representing the trade plan.</returns>
         private static Plan CreateTradePlan(IExchangeClient client, string symbolName, double amount)
         {
             Logger.LogInformation($"Creating the trade plan for {symbolName} using {amount:F8} BTC");
