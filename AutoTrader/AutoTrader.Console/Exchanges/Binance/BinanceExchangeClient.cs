@@ -3,10 +3,7 @@
 // </copyright>
 namespace AutoTrader.Console.Exchanges.Binance
 {
-    using System;
-    using System.Collections;
     using System.Collections.Generic;
-    using System.Dynamic;
     using System.Linq;
     using System.Threading.Tasks;
     using AutoTrader.Console.Configuration;
@@ -20,6 +17,20 @@ namespace AutoTrader.Console.Exchanges.Binance
     public class BinanceExchangeClient : ExchangeClient, IBinanceExchangeClient
     {
         /// <summary>
+        /// The string key of the header value for the API KEY information.
+        /// </summary>
+        private const string ApiKeyHeaderKey = "X-MBX-APIKEY";
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="BinanceExchangeClient"/> class.
+        /// </summary>
+        /// <param name="client">An instance of the <see cref="IRestClient"/> 
+        /// to be used to manipulate the exchange API.</param>
+        public BinanceExchangeClient(IRestClient client) : base(client)
+        {
+        }
+
+        /// <summary>
         /// Gets current price information of an asset symbol.
         /// </summary>
         /// <param name="symbol">Name of the cryptocurrency asset symbol.</param>
@@ -29,14 +40,8 @@ namespace AutoTrader.Console.Exchanges.Binance
             RestRequest request = new RestRequest("ticker/price", Method.GET);
 
             request.AddQueryParameter("symbol", symbol);
-
-            TaskCompletionSource<IRestResponse> taskCompletionSource = new TaskCompletionSource<IRestResponse>();
-
-            Client.ExecuteAsync(request, handle => taskCompletionSource.SetResult(handle));
-
-            RestResponse response = (RestResponse)(await taskCompletionSource.Task);
-
-            dynamic result = JsonConvert.DeserializeObject(response.Content);
+            
+            dynamic result = JsonConvert.DeserializeObject((await this.GetRequestResult(request)).Content);
 
             return result.price;
         }
@@ -47,54 +52,101 @@ namespace AutoTrader.Console.Exchanges.Binance
         /// <param name="symbol">Name of the cryptocurrency asset symbol.</param>
         /// <param name="bidPrice">The price to bid for this order.</param>
         /// <param name="amount">The amount of assets to be traded.</param>
-        /// <param name="type">Type of the order that will be created.</param>
+        /// <param name="side">Type of the order that will be created.</param>
         /// <returns>The order identification number.</returns>
-        public override async Task<long> CreateOrder(string symbol, double bidPrice, double amount, OrderType type)
+        public override async Task<long> CreateOrder(string symbol, double bidPrice, double amount, OrderSide side)
         {
             RestRequest request = new RestRequest("order/test", Method.POST);
 
-            request.AddHeader("X-MBX-APIKEY", ApplicationConstants.AppKey);
+            request.AddHeader(ApiKeyHeaderKey, ApplicationConstants.AppKey);
 
-            request.Parameters.AddRange(this.CreateOrderParameterList(symbol, bidPrice, amount, type));
-
-            TaskCompletionSource<IRestResponse> taskCompletionSource = new TaskCompletionSource<IRestResponse>();
-
-            Client.ExecuteAsync(request, handle => taskCompletionSource.SetResult(handle));
-
-            RestResponse response = (RestResponse)(await taskCompletionSource.Task);
-            
-            dynamic result = JsonConvert.DeserializeObject(response.Content);
-
-            return result.OrderId;
-        }
-
-        /// <summary>
-        /// Creates a new trade order parameter list to be included in the request.
-        /// </summary>
-        /// <param name="symbol">Name of the cryptocurrency asset symbol.</param>
-        /// <param name="bidPrice">The price to bid for this order.</param>
-        /// <param name="amount">The amount of assets to be traded.</param>
-        /// <param name="type">Type of the order that will be created.</param>
-        /// <returns>The order identification number.</returns>
-        private IList<Parameter> CreateOrderParameterList(string symbol, double bidPrice, double amount, OrderType type)
-        {
             IList<Parameter> parameters = new List<Parameter>();
-
-            string timestamp = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds().ToString();
 
             parameters.Add(new Parameter() { Name = "symbol", Value = symbol, Type = ParameterType.GetOrPost });
             parameters.Add(new Parameter() { Name = "quantity", Value = $"{amount:F0}", Type = ParameterType.GetOrPost });
             parameters.Add(new Parameter() { Name = "price", Value = $"{bidPrice:F8}", Type = ParameterType.GetOrPost });
             parameters.Add(new Parameter() { Name = "timeInForce", Value = "GTC", Type = ParameterType.GetOrPost });
-            parameters.Add(new Parameter() { Name = "type", Value = "LIMIT", Type = ParameterType.GetOrPost });
-            parameters.Add(new Parameter() { Name = "timestamp", Value = timestamp, Type = ParameterType.GetOrPost });
-            parameters.Add(new Parameter() { Name = "side", Value = type.ToString().ToUpper(), Type = ParameterType.GetOrPost });
+            parameters.Add(new Parameter() { Name = "side", Value = "LIMIT", Type = ParameterType.GetOrPost });
+            parameters.Add(new Parameter() { Name = "timestamp", Value = this.Timestamp, Type = ParameterType.GetOrPost });
+            parameters.Add(new Parameter() { Name = "side", Value = side.ToString().ToUpper(), Type = ParameterType.GetOrPost });
 
             string signatureMessage = string.Join("&", parameters.Select(item => $"{item.Name}={item.Value}"));
 
             parameters.Add(new Parameter() { Name = "signature", Value = this.GetSignature(signatureMessage), Type = ParameterType.GetOrPost });
 
-            return parameters;
+            request.Parameters.AddRange(parameters);
+
+            dynamic result = JsonConvert.DeserializeObject((await this.GetRequestResult(request)).Content);
+
+            return result.OrderId;
+        }
+
+        /// <summary>
+        /// Checks the order status.
+        /// </summary>
+        /// <param name="symbol">Name of the cryptocurrency asset symbol.</param>
+        /// <param name="orderId">Order identification number.</param>
+        /// <returns><see cref="OrderStatus"/>.</returns>
+        public override async Task<OrderStatus> CheckOrderStatus(string symbol, long orderId)
+        {
+            RestRequest request = new RestRequest("order", Method.GET);
+
+            request.AddHeader(ApiKeyHeaderKey, ApplicationConstants.AppKey);
+
+            IList<Parameter> parameters = new List<Parameter>();
+
+            parameters.Add(new Parameter() { Name = "symbol", Value = symbol, Type = ParameterType.GetOrPost });
+            parameters.Add(new Parameter() { Name = "orderId", Value = orderId, Type = ParameterType.GetOrPost });
+            parameters.Add(new Parameter() { Name = "timestamp", Value = this.Timestamp, Type = ParameterType.GetOrPost });
+
+            string signatureMessage = string.Join("&", parameters.Select(item => $"{item.Name}={item.Value}"));
+
+            parameters.Add(new Parameter() { Name = "signature", Value = this.GetSignature(signatureMessage), Type = ParameterType.GetOrPost });
+
+            request.Parameters.AddRange(parameters);
+
+            dynamic result = JsonConvert.DeserializeObject((await this.GetRequestResult(request)).Content);
+
+            switch (result.status)
+            {
+                case "NEW":
+                    return OrderStatus.New;
+                case "PARTIALLY_FILLED":
+                    return OrderStatus.PartiallyFilled;
+                case "FILLED":
+                    return OrderStatus.Filled;
+                case "CANCELED":
+                    return OrderStatus.Canceled;
+                default:
+                    return OrderStatus.Undefined;
+            }
+        }
+
+        /// <summary>
+        /// Cancel a trade order.
+        /// </summary>
+        /// <param name="symbol">Name of the cryptocurrency asset symbol.</param>
+        /// <param name="orderId">Order identification number.</param>
+        /// <returns><see cref="OrderStatus"/>.</returns>
+        public override async Task CancelOrder(string symbol, long orderId)
+        {
+            RestRequest request = new RestRequest("order", Method.DELETE);
+
+            request.AddHeader(ApiKeyHeaderKey, ApplicationConstants.AppKey);
+
+            IList<Parameter> parameters = new List<Parameter>();
+
+            parameters.Add(new Parameter { Name = "symbol", Value = symbol, Type = ParameterType.GetOrPost });
+            parameters.Add(new Parameter { Name = "orderId", Value = orderId, Type = ParameterType.GetOrPost });
+            parameters.Add(new Parameter { Name = "timestamp", Value = this.Timestamp, Type = ParameterType.GetOrPost });
+
+            string signatureMessage = string.Join("&", parameters.Select(item => $"{item.Name}={item.Value}"));
+
+            parameters.Add(new Parameter() { Name = "signature", Value = this.GetSignature(signatureMessage), Type = ParameterType.GetOrPost });
+
+            request.Parameters.AddRange(parameters);
+
+            await this.GetRequestResult(request);
         }
     }
 }

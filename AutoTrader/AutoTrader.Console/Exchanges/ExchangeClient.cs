@@ -4,10 +4,12 @@
 namespace AutoTrader.Console.Exchanges
 {
     using System;
+    using System.Net.Http;
     using System.Security.Cryptography;
     using System.Threading.Tasks;
     using AutoTrader.Console.Configuration;
     using AutoTrader.Console.Models;
+    using Microsoft.Extensions.Logging;
     using RestSharp;
 
     /// <summary>
@@ -16,17 +18,24 @@ namespace AutoTrader.Console.Exchanges
     public abstract class ExchangeClient : IExchangeClient
     {
         /// <summary>
-        /// An instance of the <see cref="RestClient"/> class used to manipulate the exchange API.
+        /// An instance of the <see cref="IRestClient"/> class used to manipulate the exchange API.
         /// </summary>
-        protected readonly RestClient Client;
+        protected readonly IRestClient Client;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ExchangeClient"/> class.
         /// </summary>
-        protected ExchangeClient()
+        /// <param name="client">An instance of the <see cref="IRestClient"/> 
+        /// to be used to manipulate the exchange API.</param>
+        protected ExchangeClient(IRestClient client)
         {
-            this.Client = new RestClient(ApplicationConstants.ExchangeUri);
+            this.Client = client;
         }
+
+        /// <summary>
+        /// Gets the timestamp used to sign requests to the exchange.
+        /// </summary>
+        protected string Timestamp => new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds().ToString();
 
         /// <summary>
         /// Gets current price information of an asset symbol.
@@ -41,9 +50,25 @@ namespace AutoTrader.Console.Exchanges
         /// <param name="symbol">Name of the cryptocurrency asset symbol.</param>
         /// <param name="bidPrice">The price to bid for this order.</param>
         /// <param name="amount">The amount of assets to be traded.</param>
-        /// <param name="type">Type of the order that will be created.</param>
+        /// <param name="side">Type of the order that will be created.</param>
         /// <returns>The order identification number.</returns>
-        public abstract Task<long> CreateOrder(string symbol, double bidPrice, double amount, OrderType type);
+        public abstract Task<long> CreateOrder(string symbol, double bidPrice, double amount, OrderSide side);
+
+        /// <summary>
+        /// Checks the order status.
+        /// </summary>
+        /// <param name="symbol">Name of the cryptocurrency asset symbol.</param>
+        /// <param name="orderId">Order identification number.</param>
+        /// <returns><see cref="OrderStatus"/>.</returns>
+        public abstract Task<OrderStatus> CheckOrderStatus(string symbol, long orderId);
+
+        /// <summary>
+        /// Cancel a trade order.
+        /// </summary>
+        /// <param name="symbol">Name of the cryptocurrency asset symbol.</param>
+        /// <param name="orderId">Order identification number.</param>
+        /// <returns><see cref="OrderStatus"/>.</returns>
+        public abstract Task CancelOrder(string symbol, long orderId);
 
         /// <summary>
         /// Gets an HMACSHA256 signature to authorize requests to the exchange API.
@@ -58,5 +83,19 @@ namespace AutoTrader.Console.Exchanges
 
             return BitConverter.ToString(signatureBytes).Replace("-", string.Empty);
         }
+
+        /// <summary>
+        /// Gets the result of a rest request response.
+        /// </summary>
+        /// <param name="request">An instance of the <see cref="IRestRequest"/> to be executed.</param>
+        /// <returns>An instance of <see cref="IRestResponse"/>.</returns>
+        protected async Task<IRestResponse> GetRequestResult(IRestRequest request)
+        {
+            TaskCompletionSource<IRestResponse> taskCompletionSource = new TaskCompletionSource<IRestResponse>();
+
+            this.Client.ExecuteAsync(request, handle => taskCompletionSource.SetResult(handle));
+
+            return (RestResponse)(await taskCompletionSource.Task);
+        }  
     }
 }

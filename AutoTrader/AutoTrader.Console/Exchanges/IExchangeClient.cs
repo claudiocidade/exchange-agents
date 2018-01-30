@@ -24,8 +24,24 @@ namespace AutoTrader.Console.Exchanges
         /// <param name="symbol">Name of the cryptocurrency asset symbol.</param>
         /// <param name="bidPrice">The price to bid for this order.</param>
         /// <param name="amount">The amount of assets to be traded.</param>
-        /// <param name="type">Type of the order that will be created.</param>
+        /// <param name="side">Type of the order that will be created.</param>
         /// <returns>The order identification number.</returns>
-        Task<long> CreateOrder(string symbol, double bidPrice, double amount, OrderType type);
+        Task<long> CreateOrder(string symbol, double bidPrice, double amount, OrderSide side);
+
+        /// <summary>
+        /// Checks the order status.
+        /// </summary>
+        /// <param name="symbol">Name of the cryptocurrency asset symbol.</param>
+        /// <param name="orderId">Order identification number.</param>
+        /// <returns><see cref="OrderStatus"/>.</returns>
+        Task<OrderStatus> CheckOrderStatus(string symbol, long orderId);
+
+        /// <summary>
+        /// Cancel a trade order.
+        /// </summary>
+        /// <param name="symbol">Name of the cryptocurrency asset symbol.</param>
+        /// <param name="orderId">Order identification number.</param>
+        /// <returns><see cref="OrderStatus"/>.</returns>
+        Task CancelOrder(string symbol, long orderId);
     }
 }

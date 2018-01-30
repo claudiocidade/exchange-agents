@@ -1,12 +1,12 @@
-﻿// <copyright file="OrderType.cs" company="ElmoLabs">
+﻿// <copyright file="OrderSide.cs" company="ElmoLabs">
 //  Copyright (c) All rights reserved.
 // </copyright>
 namespace AutoTrader.Console.Models
 {
     /// <summary>
-    /// The types of trade orders.
+    /// The types of trade order side.
     /// </summary>
-    public enum OrderType
+    public enum OrderSide
     {
         /// <summary>
         /// Buy asset order.
