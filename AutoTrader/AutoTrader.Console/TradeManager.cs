@@ -3,6 +3,7 @@
 // </copyright>
 namespace AutoTrader.Console
 {
+    using System;
     using System.Threading;
     using System.Threading.Tasks;
     using AutoTrader.Console.Exchanges;
@@ -40,20 +41,23 @@ namespace AutoTrader.Console
         /// Executes a automatic trade on an specific symbol. 
         /// </summary>
         /// <param name="symbol">Symbol to be traded.</param>
-        /// <param name="amount">Amount of BTC to invest.</param>
+        /// <param name="amount">InvestmentAmount of BTC to invest.</param>
         /// <returns>An instance of the <see cref="Task"/> class.</returns>
         public async Task ExecuteTrade(string symbol, double amount)
         {
-            Plan plan = this.CreateTradePlan(symbol, amount);
+            Plan plan = await this.CreateTradePlan(symbol, amount);
 
-            long buyOrderId = await this.client.CreateOrder(symbol, plan.Bid, amount / plan.Bid, OrderSide.Buy);
+            long buyOrderId = await this.client.CreateOrder(symbol, plan.Bid * .5, amount / plan.Bid, OrderSide.Buy);
 
-            if (this.EnsureOrderFilled(symbol, buyOrderId, plan.Bid, 1.2))
+            logger.LogInformation($"A {OrderSide.Buy} order was placed for the amount of {plan.QuantityToBuy:F0} {symbol} at {plan.Bid *.5}.");
+
+            if (await this.EnsureOrderFilled(symbol, buyOrderId, plan.Bid, 1.2, 1))
             {
-                await this.client.CreateOrder(symbol, plan.Bid, plan.Sell, OrderSide.Sell);
+                await this.client.CreateOrder(symbol, plan.Sell, plan.QuantityToBuy, OrderSide.Sell);
 
-                if (this.EnsureOrderFilled(symbol, buyOrderId, plan.Bid, 1.1))
+                if (await this.EnsureOrderFilled(symbol, buyOrderId, plan.Bid, 1.1, 1))
                 {
+                    this.logger.LogInformation("SUCCESS: Trade executed succesfully");
                 }
             }
         }
@@ -64,24 +68,36 @@ namespace AutoTrader.Console
         /// <param name="symbol">Name of the asset symbol to trade.</param>
         /// <param name="orderId">Order identification number.</param>
         /// <param name="bidPrice">The price to bid for this order.</param>
-        /// <param name="percentageTreshold">The total percentage.</param>
+        /// <param name="percentageTreshold">The threshold percentage (above and below the price).</param>
+        /// <param name="timeOut">Timeout for retries (in minutes).</param>
         /// <returns>Whether or not the order has been filled within the estabilished criteria.</returns>
-        private bool EnsureOrderFilled(string symbol, long orderId, double bidPrice, double percentageTreshold)
+        private async Task<bool> EnsureOrderFilled(string symbol, long orderId, double bidPrice, double percentageTreshold, int timeOut)
         {
-            OrderStatus status = this.client.CheckOrderStatus(symbol, orderId).GetAwaiter().GetResult();
+            OrderStatus status = await this.client.CheckOrderStatus(symbol, orderId);
 
-            double currentPrice = this.client.GetAssetPrice(symbol).GetAwaiter().GetResult();
+            double currentPrice = await this.client.GetAssetPrice(symbol);
 
-            while (status != OrderStatus.Filled && (currentPrice < bidPrice * percentageTreshold && currentPrice > bidPrice * percentageTreshold))
+            DateTime start = DateTime.Now;
+
+            while (status != OrderStatus.Filled && (currentPrice < bidPrice * percentageTreshold || currentPrice > bidPrice * (percentageTreshold - 1)) && DateTime.Now < start.AddMinutes(timeOut))
             {
                 Thread.Sleep(2000);
 
-                status = this.client.CheckOrderStatus(symbol, orderId).GetAwaiter().GetResult();
+                status = await this.client.CheckOrderStatus(symbol, orderId);
 
-                currentPrice = this.client.GetAssetPrice(symbol).GetAwaiter().GetResult();
+                currentPrice = await this.client.GetAssetPrice(symbol);
             }
 
-            return status == OrderStatus.Filled;
+            if (status != OrderStatus.Filled)
+            {
+                await this.client.CancelOrder(symbol, orderId);
+
+                this.logger.LogInformation("FAIL: Unfortunatelly the trade entrace timeout expired and this trade is no longer worth the risk");
+
+                return false;
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -89,25 +105,27 @@ namespace AutoTrader.Console
         /// to benefit from sudden spikes in price.
         /// </summary>
         /// <param name="symbol">Name of the asset symbol to trade.</param>
-        /// <param name="amount">Amount to invest in BTC.</param>
+        /// <param name="amount">InvestmentAmount to invest in BTC.</param>
         /// <returns>An instance of the <see cref="Plan"/> representing the trade plan.</returns>
-        private Plan CreateTradePlan(string symbol, double amount)
+        private async Task<Plan> CreateTradePlan(string symbol, double amount)
         {
             this.logger.LogInformation($"Creating the trade plan for {symbol} using {amount:F8} BTC");
 
-            double currentPrice = this.client.GetAssetPrice(symbol).GetAwaiter().GetResult();
-
-            this.logger.LogInformation($"Current price for {symbol} is {currentPrice:F8}");
+            double currentPrice = await this.client.GetAssetPrice(symbol);
 
             double bidPrice = currentPrice * 1.05;
 
-            this.logger.LogInformation($"Bid price is {bidPrice:F8} (5% from current) for the amount of {(amount / bidPrice):F8}");
-
             double sellPrice = bidPrice * 1.7;
 
-            this.logger.LogInformation($"Selling when {sellPrice:F8} (70% profit)");
+            Plan plan = new Plan(currentPrice, bidPrice, sellPrice, amount);
 
-            return new Plan(currentPrice, bidPrice, sellPrice, amount);
+            this.logger.LogInformation($"Current price for {symbol} is {plan.Current:F8}");
+
+            this.logger.LogInformation($"Bid price is {plan.Bid:F8} (5% from current) for the amount of {plan.QuantityToBuy:F8}");
+
+            this.logger.LogInformation($"Selling when {plan.Sell:F8} (70% profit)");
+
+            return plan;
         }
     }
 }

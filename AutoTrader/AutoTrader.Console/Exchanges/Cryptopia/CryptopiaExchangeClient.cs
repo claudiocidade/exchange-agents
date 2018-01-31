@@ -1,7 +1,7 @@
-﻿// <copyright file="BinanceExchangeClient.cs" company="ElmoLabs">
+﻿// <copyright file="CryptopiaExchangeClient.cs" company="ElmoLabs">
 //  Copyright (c) All rights reserved.
 // </copyright>
-namespace AutoTrader.Console.Exchanges.Binance
+namespace AutoTrader.Console.Exchanges.Cryptopia
 {
     using System.Collections.Generic;
     using System.Linq;
@@ -14,7 +14,7 @@ namespace AutoTrader.Console.Exchanges.Binance
     /// <summary>
     /// An exchange manipulation client.
     /// </summary>
-    public class BinanceExchangeClient : ExchangeClient, IBinanceExchangeClient
+    public class CryptopiaExchangeClient : ExchangeClient, ICryptopiaExchangeClient
     {
         /// <summary>
         /// The string key of the header value for the API KEY information.

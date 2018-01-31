@@ -3,6 +3,8 @@
 // </copyright>
 namespace AutoTrader.Console.Models
 {
+    using System.Globalization;
+
     /// <summary>
     /// A trade entrance plan.
     /// </summary>
@@ -21,8 +23,8 @@ namespace AutoTrader.Console.Models
         /// <param name="current">The current price in BTC.</param>
         /// <param name="bid">The bid price in BTC.</param>
         /// <param name="sell">The sell price in BTC.</param>
-        /// <param name="amount">Amount of BTC to be used in the trade.</param>
-        public Plan(double current, double bid, double sell, double amount)
+        /// <param name="investmentAmount">InvestmentAmount of BTC to be used in the trade.</param>
+        public Plan(double current, double bid, double sell, double investmentAmount)
         {
             this.Current = current;
 
@@ -30,7 +32,7 @@ namespace AutoTrader.Console.Models
 
             this.Sell = sell;
 
-            this.Amount = amount;
+            this.InvestmentAmount = investmentAmount;
         }
 
         /// <summary>
@@ -51,6 +53,13 @@ namespace AutoTrader.Console.Models
         /// <summary>
         /// Gets or sets the amount of BTC to be used in the trade.
         /// </summary>
-        public double Amount { get; protected internal set; }
+        public double InvestmentAmount { get; protected internal set; }
+
+        /// <summary>
+        /// Gets or sets the amount of BTC to be used in the trade.
+        /// </summary>
+        public double QuantityToBuy => (this.InvestmentAmount / this.Bid) > 0 
+            ? System.Math.Floor(this.InvestmentAmount / this.Bid) 
+            : this.InvestmentAmount / this.Bid;
     }
 }

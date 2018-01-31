@@ -3,6 +3,7 @@
 // </copyright>
 namespace AutoTrader.Console.Exchanges
 {
+    using System.Collections.Generic;
     using System.Threading.Tasks;
     using AutoTrader.Console.Models;
 

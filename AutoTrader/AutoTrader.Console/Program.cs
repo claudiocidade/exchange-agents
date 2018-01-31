@@ -5,13 +5,14 @@ namespace AutoTrader.Console
 {
     using System;
     using System.Globalization;
-    using System.Threading;
-    using AutoTrader.Console.Exchanges;
+    using System.Threading.Tasks;
+    using AutoTrader.Console.Configuration;
     using AutoTrader.Console.Exchanges.Binance;
-    using AutoTrader.Console.Models;
     using Microsoft.Extensions.DependencyInjection;
     using Microsoft.Extensions.Logging;
+    using RestSharp;
     using StructureMap;
+    using StructureMap.Pipeline;
 
     /// <summary>
     /// Program runtime initialization class.
@@ -43,6 +44,8 @@ namespace AutoTrader.Console
                     _.WithDefaultConventions();
                 });
 
+                config.For<IRestClient>(new TransientLifecycle()).Add(new RestClient(ApplicationConstants.ExchangeUri));
+
                 // Populate the container using the service collection
                 config.Populate(serviceCollection);
             });
@@ -50,20 +53,20 @@ namespace AutoTrader.Console
             // add the framework services
             ServiceProvider serviceProvider = serviceCollection.BuildServiceProvider();
             
-            TradeManager = new TradeManager(container.GetInstance<IBinanceExchangeClient>(), serviceProvider.GetService<ILoggerFactory>().CreateLogger("Info"));
+            TradeManager = new TradeManager(container.GetInstance<ICryptopiaExchangeClient>(), serviceProvider.GetService<ILoggerFactory>().CreateLogger("Info"));
         }
 
         /// <summary>
         /// Runtime initialization method.
         /// </summary>
         /// <param name="args">Command line arguments.</param>
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
-            string symbol = $"{(args.Length > 1 ? args[1].ToUpper() : "ADA")}BTC";
+            string symbol = $"{(args.Length > 1 ? args[1].ToUpper() : "LTC")}BTC";
 
-            double amount = double.Parse(args.Length > 2 ? args[2].ToUpper() : "0.01000000", NumberStyles.AllowDecimalPoint);
+            double amount = double.Parse(args.Length > 2 ? args[2].ToUpper() : "0.01", NumberStyles.AllowDecimalPoint);
 
-            TradeManager.ExecuteTrade(symbol, amount).GetAwaiter().GetResult();
+            await TradeManager.ExecuteTrade(symbol, amount);
 
             Console.ReadKey();
         }

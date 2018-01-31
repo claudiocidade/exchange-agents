@@ -4,12 +4,11 @@
 namespace AutoTrader.Console.Exchanges
 {
     using System;
-    using System.Net.Http;
+    using System.Collections.Generic;
     using System.Security.Cryptography;
     using System.Threading.Tasks;
     using AutoTrader.Console.Configuration;
     using AutoTrader.Console.Models;
-    using Microsoft.Extensions.Logging;
     using RestSharp;
 
     /// <summary>
