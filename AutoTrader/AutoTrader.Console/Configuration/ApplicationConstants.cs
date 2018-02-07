@@ -18,11 +18,11 @@ namespace AutoTrader.Console.Configuration
         /// <summary>
         /// Gets the application key.
         /// </summary>
-        public static string AppKey => "3H4VEZMKKcfg7IUgNG9nz0pIS6YTuEvtLRljDCkhbDoyTdMa6f0MB8uqUJx0yv8v";
+        public static string AppKey => "";
 
         /// <summary>
         /// Gets the secret key.
         /// </summary>
-        public static string SecretKey => "nlfLlAMbmqExHsCApdWmF7NnGzChby7XEybB0QhF88UlMxn51wd5nuPV79Mb0TFZ";
+        public static string SecretKey => "";
     }
 }
